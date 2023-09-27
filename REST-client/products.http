@@ -1,0 +1,36 @@
+@url = https://fw-teaching.fi/demo/rest/api/v1/products
+
+### Alla produkter
+GET {{url}}/
+
+### En specifik produkt
+GET {{url}}/1001
+
+### Skapa ny produkt
+POST {{url}}/
+Content-Type: application/json
+
+{
+    "name": "Shoes",
+    "price": 55
+}
+
+### Ändra hela produkten med PUT
+PUT {{url}}/1004
+Content-Type: application/json
+
+{
+    "name": "Pants",
+    "price": 60
+}
+
+### Ändra pris med PATCH
+PATCH {{url}}/1004
+Content-Type: application/json
+
+{
+    "price": 50
+}
+
+### Radera produkt med DELETE
+DELETE {{url}}/1006

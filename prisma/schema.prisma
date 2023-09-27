@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POST_URL")
+}
+
+model notes {
+  id Int @id @default(autoincrement())
+  noteText String?
+  userId Int
+  createdAt DateTime? @default(now()) 
+  updatedAt DateTime? @default(now())
+}
+
+
+model users {
+  id     Int    @id @default(autoincrement())
+  email   String   @unique
+  name    String?
+  password String?
+  createdAt DateTime @default(now()) 
+  updatedAt DateTime @default(now())
+}

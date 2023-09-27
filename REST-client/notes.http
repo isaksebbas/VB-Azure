@@ -1,0 +1,36 @@
+@apiUrl = http://localhost:3030/notes
+#@apiUrl = https://notes-fredde-23.azurewebsites.net/notes
+@token = {{$dotenv TOKEN}}
+
+###
+GET {{apiUrl}}
+Authorization: Bearer {{token}}
+
+
+###
+GET {{apiUrl}}/3
+Authorization: Bearer {{token}}
+
+###
+POST {{apiUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "text": "Ny note"
+}
+
+### 
+PATCH {{apiUrl}}/2
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "text": "Ny note uppdaterad"
+}
+
+###
+DELETE {{apiUrl}}/2
+Authorization: Bearer {{token}}
+
+###
