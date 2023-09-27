@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Demo</title>
+
+</head>
+
+<!-- Works with ws-node in this repo -->
+    
+<body>
+    <input id="in" type="text" placeholder="Paste here">
+    <p id="out">...</p>
+    <p id="err" style="color: red;"></p>
+
+    <script>
+
+        if (!localStorage.getItem('pastebin_token')) {
+            localStorage.setItem('pastebin_token', prompt('Enter token'));
+        }
+
+        WS_TOKEN = localStorage.getItem('pastebin_token') || 'my-secret-token';
+        
+        // wss = SSL-krypterad
+        WS_URL = `wss://wom-ws-pastebin.azurewebsites.net?token=${WS_TOKEN}` 
+        // WS_URL = ``ws://localhost:5000?token=${WS_TOKEN}`
+
+        console.log(WS_URL)
+        
+        // Create a WebSocket connection
+        const socket = new WebSocket(WS_URL);
+
+        // Connection established 
+        socket.onopen = function (event) {
+            console.log('Connected to WebSocket server');
+        };
+
+        // Message listener
+        socket.onmessage = function (event) {
+            console.log('Received message:', event.data);
+            const data = JSON.parse(event.data);
+
+            if (data.type == 'paste') {
+                document.querySelector('#out').innerText = data.text;
+                document.querySelector('#err').innerText = '';
+            } else if (data.type == 'error') {
+                document.querySelector('#err').innerText = data.msg;
+            }
+            
+        };
+
+        // Connection closed 
+        socket.onclose = function (event) {
+            console.log('Connection closed');
+        };
+
+        document.querySelector('#in').addEventListener('input', (evt) => {
+            socket.send(JSON.stringify({
+                type: 'paste',
+                text: evt.target.value
+            }));
+        });
+    </script>
+
+</body>
+
+</html>
