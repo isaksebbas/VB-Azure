@@ -1,11 +1,12 @@
 const WebSocket = require('ws')
 require('dotenv').config()
 
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 4000
 const wss = new WebSocket.Server({ port: PORT })
 
 // Set: datatyp "med bara nycklar", Wikipedia: Unlike most other collection types, rather than retrieving a specific element from a set, one typically tests a value for membership in a set. 
 const clients = new Set()
+
 
 // URL example: ws://my-server?token=my-secret-token
 wss.on('connection', (ws, req) => {
