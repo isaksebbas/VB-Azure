@@ -58,11 +58,26 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-// Create an HTTP server
 const httpServer = http.createServer((req, res) => {
-    // Handle regular HTTP requests here (if needed)
-    // ...
-    res.end('Hello, HTTP!'); // Example HTTP response
+    if (req.url === '/') {
+        // Read the HTML file
+        fs.readFile('./ws-frontend/index.html', (err, data) => {
+            if (err) {
+                // Handle file read error
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Internal Server Error');
+            } else {
+                // Serve the HTML file
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(data);
+            }
+        });
+    } else {
+        // Handle other HTTP requests (if needed)
+        // ...
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+    }
 });
 
 // Upgrade HTTP requests to WebSocket requests
