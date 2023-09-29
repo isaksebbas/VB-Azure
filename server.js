@@ -3,6 +3,10 @@ const http = require('http'); // Import the 'http' module
 
 require('dotenv').config();
 
+const http = require('http');
+const fs = require('fs');
+const WebSocket = require('ws');
+
 const PORT = process.env.PORT || 3030;
 
 console.log("Starting WebSocket server on port " + PORT);
@@ -61,7 +65,7 @@ wss.on('connection', (ws, req) => {
 const httpServer = http.createServer((req, res) => {
     if (req.url === '/') {
         // Read the HTML file
-        fs.readFile('./ws-frontend/index.html', (err, data) => {
+        fs.readFile('ws-frontend/index.html', (err, data) => {
             if (err) {
                 // Handle file read error
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -91,3 +95,8 @@ httpServer.on('upgrade', (request, socket, head) => {
 httpServer.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
 });
+
+
+
+
+
