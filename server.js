@@ -3,9 +3,8 @@ const http = require('http'); // Import the 'http' module
 
 require('dotenv').config();
 
-const http = require('http');
 const fs = require('fs');
-const WebSocket = require('ws');
+
 
 const PORT = process.env.PORT || 3030;
 
