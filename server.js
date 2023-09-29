@@ -1,3 +1,63 @@
+const PORT = process.env.PORT || 3030;
+const port = 3000;
+
+
+//DATABASE
+const { Client } = require('pg');
+const config = require('./config'); 
+
+const dbClient = new Client({
+    connectionString: config.databaseURL,
+    user: config.databaseUsername,
+    password: config.databasePassword,
+  });
+
+// Connect to the database
+dbClient.connect()
+  .then(() => {
+    console.log('Connected to ElephantSQL database');
+  })
+  .catch((error) => {
+    console.error('Error connecting to ElephantSQL database:', error);
+  });
+
+  //Add Express
+  const express = require('express');
+  const app = express();
+
+  app.use(express.json());
+
+  app.get('/query', async (req, res) => {
+    try {
+      await dbClient.connect();
+  
+      //const result = await dbClient.query('SELECT * FROM users');
+
+      const result = await dbClient.query('SELECT id FROM users WHERE user_id = 1'); // Replace with your actual query conditions
+
+  
+      // Send the result as JSON
+      res.json(result.rows);
+      //res.json({ id: 123 }); // Replace with your actual data
+
+    } catch (error) {
+      console.error('Error executing query:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    } finally {
+      await dbClient.end();
+    }
+  });
+  
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+
+  
+  /////////////////////
+
+
+
+
 const WebSocket = require('ws');
 const http = require('http'); // Import the 'http' module
 
@@ -6,7 +66,6 @@ require('dotenv').config();
 const fs = require('fs');
 
 
-const PORT = process.env.PORT || 3030;
 
 console.log("Starting WebSocket server on port " + PORT);
 

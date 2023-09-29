@@ -14,8 +14,30 @@
     <input id="in" type="text" placeholder="Paste here">
     <p id="out">...</p>
     <p id="err" style="color: red;"></p>
+    <p id="result">loading...</p>
 
     <script>
+//TEST DATABASE
+fetch('/query')
+  .then((response) => response.json())
+  .then((data) => {
+    // Update the DOM with the data
+    //check type of data before structuring
+    console.log(data + 'datatype');
+
+
+    //const id = data[0]; // Assuming the result is an array with a single value
+
+    //const id = data[0].id; // Assuming the result is an array of objects
+
+    
+    document.querySelector('#result').innerText = `ID: ${data}`;
+  })
+  .catch((error) => {
+    console.error('Error fetching data:', error.message);
+  });
+
+
 
         if (!localStorage.getItem('pastebin_token')) {
             localStorage.setItem('pastebin_token', prompt('Enter token'));
