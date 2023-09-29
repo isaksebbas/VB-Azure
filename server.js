@@ -1,16 +1,20 @@
-const WebSocket = require('ws')
-require('dotenv').config()
+const WebSocket = require('ws');
+const http = require('http'); // Import the 'http' module
 
-const PORT = process.env.PORT || 4000
-const wss = new WebSocket.Server({ port: PORT })
+require('dotenv').config();
+
+const PORT = process.env.PORT || 3030;
+
+console.log("Starting WebSocket server on port " + PORT);
+
+const wss = new WebSocket.Server({ noServer: true }); // Create a WebSocket server
 
 // Set: datatyp "med bara nycklar", Wikipedia: Unlike most other collection types, rather than retrieving a specific element from a set, one typically tests a value for membership in a set. 
-const clients = new Set()
+const clients = new Set();
 
-
-// URL example: ws://my-server?token=my-secret-token
 wss.on('connection', (ws, req) => {
-    
+    // WebSocket connection handling code (unchanged)
+    // ...
     // Check valid token (set token in .env as WS_TOKEN=my-secret-token )
     const urlParams = new URLSearchParams(req.url.slice(1));
     if (urlParams.get('token') !== process.env.WS_TOKEN) {
@@ -51,14 +55,24 @@ wss.on('connection', (ws, req) => {
                 text: message.text
             }));
         })
-
     });
-
-    ws.on('close', () => {
-        console.log('Client disconnected');
-    });
-    
-
 });
 
+// Create an HTTP server
+const httpServer = http.createServer((req, res) => {
+    // Handle regular HTTP requests here (if needed)
+    // ...
+    res.end('Hello, HTTP!'); // Example HTTP response
+});
 
+// Upgrade HTTP requests to WebSocket requests
+httpServer.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+    });
+});
+
+// Start listening on the specified port for both HTTP and WebSocket
+httpServer.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+});
