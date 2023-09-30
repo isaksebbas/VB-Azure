@@ -1,4 +1,8 @@
+
+//WSS port
 const PORT = process.env.PORT || 3030;
+
+//Express port
 const port = 3000;
 
 
@@ -21,13 +25,15 @@ dbClient.connect()
     console.error('Error connecting to ElephantSQL database:', error);
   });
 
-  //Add Express
-  const express = require('express');
-  const app = express();
+//Add Express
+const express = require('express');
+const app = express();
 
-  app.use(express.json());
+app.use(express.json());
 
-  app.get('/query', async (req, res) => {
+app.use(express.static('public'));
+
+app.get('/query', async (req, res) => {
     try {
       await dbClient.connect();
   
@@ -46,11 +52,11 @@ dbClient.connect()
     } finally {
       await dbClient.end();
     }
-  });
+});
   
-  app.listen(port, () => {
+app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
-  });
+});
 
   
   /////////////////////
@@ -76,10 +82,12 @@ const clients = new Set();
 
 wss.on('connection', (ws, req) => {
 
+    const dropdownItems = [];
+
     //Update dropdown list
     ws.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
 
-    const dropdownItems = [];
+    
 
     wss.on('connection', (ws) => {
         // Send the current list of items to the newly connected client
@@ -192,7 +200,7 @@ server.on('upgrade', (request, socket, head) => {
 
 // Start listening on the specified port for both HTTP and WebSocket
 server.listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
+    //console.log(`Server listening on http://localhost:${PORT}`);
 });
 
 
