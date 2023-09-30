@@ -33,7 +33,7 @@ dbClient.connect()
   
       //const result = await dbClient.query('SELECT * FROM users');
 
-      const result = await dbClient.query('SELECT id FROM users WHERE user_id = 1'); // Replace with your actual query conditions
+      const result = await dbClient.query('SELECT id FROM "public"."users" WHERE user_id = 1'); // Replace with your actual query conditions
 
   
       // Send the result as JSON
@@ -75,6 +75,45 @@ const wss = new WebSocket.Server({ noServer: true }); // Create a WebSocket serv
 const clients = new Set();
 
 wss.on('connection', (ws, req) => {
+
+    //Update dropdown list
+    ws.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
+
+    const dropdownItems = [];
+
+    wss.on('connection', (ws) => {
+        // Send the current list of items to the newly connected client
+        ws.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
+      
+        // Handle incoming messages from the client
+        ws.on('message', (message) => {
+          const data = JSON.parse(message);
+      
+          // Check the action type in the incoming message
+          if (data.action === 'add_item') {
+            const newItemName = data.itemName;
+      
+            // Add the new item to the dropdownItems array
+            dropdownItems.push(newItemName);
+      
+            // Broadcast the updated list to all connected clients
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
+              }
+            });
+          }
+        });
+    });
+
+
+
+
+
+
+
+
+
     // WebSocket connection handling code (unchanged)
     // ...
     // Check valid token (set token in .env as WS_TOKEN=my-secret-token )
@@ -87,6 +126,8 @@ wss.on('connection', (ws, req) => {
         }));
         ws.close();
     }
+
+
 
     // Spara connectionen i vårt client-Set:
     if (!clients.has(ws)) {
@@ -120,7 +161,7 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-const httpServer = http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
     if (req.url === '/') {
         // Read the HTML file
         fs.readFile('ws-frontend/index.html', (err, data) => {
@@ -143,18 +184,15 @@ const httpServer = http.createServer((req, res) => {
 });
 
 // Upgrade HTTP requests to WebSocket requests
-httpServer.on('upgrade', (request, socket, head) => {
+server.on('upgrade', (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
     });
 });
 
 // Start listening on the specified port for both HTTP and WebSocket
-httpServer.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
 });
-
-
-
 
 

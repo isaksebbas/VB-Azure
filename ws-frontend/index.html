@@ -4,20 +4,64 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Demo</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Part 2</title>
 
 </head>
 
 <!-- Works with ws-node in this repo -->
     
 <body>
-    <input id="in" type="text" placeholder="Paste here">
+    <!-- Nav bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <!-- Navbar Brand (You can replace this with your own logo or brand name) -->
+            <a class="navbar-brand" href="#">Virtual Board</a>
+    
+            <!-- Centered Dropdown List -->
+            <ul class="navbar-nav mx-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Dropdown
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="#">Option 1</a>
+                        <a class="dropdown-item" href="#">Option 2</a>
+                        <a class="dropdown-item" href="#">Option 3</a>
+                    </div>
+                </li>
+            </ul>
+    
+            <!-- Button to the Right -->
+            <div class="ml-auto">
+                <button id="addItemButton" class="btn btn-primary">Add</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Input field -->
+
+    <input id="itemInput" type="text" placeholder="Paste here">
     <p id="out">...</p>
     <p id="err" style="color: red;"></p>
     <p id="result">loading...</p>
 
+    <!-- Bootstrap JS libraries -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
     <script>
+
+//Elements for adding from input field via button to drop down
+const itemInput = document.getElementById('itemInput');
+const addItemButton = document.getElementById('addItemButton');
+const dropdownMenu = document.querySelector('.dropdown-menu');
+
+
 //TEST DATABASE
+/*
 fetch('/query')
   .then((response) => response.json())
   .then((data) => {
@@ -30,34 +74,81 @@ fetch('/query')
 
     //const id = data[0].id; // Assuming the result is an array of objects
 
-    
+
     document.querySelector('#result').innerText = `ID: ${data}`;
   })
+
   .catch((error) => {
     console.error('Error fetching data:', error.message);
   });
 
+*/
 
+if (!localStorage.getItem('pastebin_token')) {
+    localStorage.setItem('pastebin_token', prompt('Enter token'));
+}
 
-        if (!localStorage.getItem('pastebin_token')) {
-            localStorage.setItem('pastebin_token', prompt('Enter token'));
-        }
-
-        WS_TOKEN = localStorage.getItem('pastebin_token') || 'my-secret-token';
+WS_TOKEN = localStorage.getItem('pastebin_token') || 'my-secret-token';
         
-        // wss = SSL-krypterad
-        WS_URL = `wss://w-o-m-2023.azurewebsites.net/?token=${WS_TOKEN}` 
-        // WS_URL = ``ws://localhost:5000?token=${WS_TOKEN}`
+// wss = SSL-krypterad
+WS_URL = `wss://w-o-m-2023.azurewebsites.net/?token=${WS_TOKEN}` 
+//WS_URL = `ws://localhost:3000?token=${WS_TOKEN}`
 
 console.log(WS_URL);
+
 
 // Create a WebSocket connection
 const socket = new WebSocket(WS_URL);
 
-        // Connection established 
-        socket.onopen = function (event) {
-            console.log('Connected to WebSocket server');
-        };
+// Connection established 
+socket.onopen = function (event) {
+    console.log('Connected to WebSocket server');
+
+    document.querySelector('#itemInput').addEventListener('input', (evt) => {
+            socket.send(JSON.stringify({
+                type: 'paste',
+                text: evt.target.value
+            }));
+        });
+};
+
+// Event listener for the "Add Item" button click
+addItemButton.addEventListener('click', () => {
+
+    const newItemName = itemInput.value;
+    
+    // Send the new item name to the server using Websockets
+    socket.send(JSON.stringify({ action: 'add_item', itemName: newItemName }));
+
+});
+
+   // WebSocket event listener for messages from the server
+   socket.addEventListener('message', (event) => {
+    const data = JSON.parse(event.data);
+    
+    // Check if the server is sending an updated list of items
+    if (data.action === 'update_items') {
+      updateDropdownMenu(data.items);
+    }
+  });
+
+  // Function to update the dropdown menu with the new items
+  function updateDropdownMenu(items) {
+    // Clear existing items
+    dropdownMenu.innerHTML = '';
+    
+    // Add the new items to the dropdown
+    items.forEach((item) => {
+      const dropdownItem = document.createElement('a');
+      dropdownItem.classList.add('dropdown-item');
+      dropdownItem.href = '#';
+      dropdownItem.textContent = item;
+      dropdownMenu.appendChild(dropdownItem);
+    });
+  }
+
+
+        
 
         // Message listener
         socket.onmessage = function (event) {
@@ -73,17 +164,14 @@ const socket = new WebSocket(WS_URL);
             
         };
 
+        
+
+        
+
         // Connection closed 
         socket.onclose = function (event) {
             console.log('Connection closed');
         };
-
-        document.querySelector('#in').addEventListener('input', (evt) => {
-            socket.send(JSON.stringify({
-                type: 'paste',
-                text: evt.target.value
-            }));
-        });
     </script>
 
 </body>
