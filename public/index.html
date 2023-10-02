@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    
     
     <title>Part 2</title>
 
@@ -13,6 +16,8 @@
 <!-- Works with ws-node in this repo -->
     
 <body>
+
+
     <!-- Nav bar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
@@ -40,18 +45,29 @@
         </div>
     </nav>
 
+
+
     <!-- Input field -->
 
-    <input id="itemInput" type="text" placeholder="Paste here">
+    <input id="noteText" type="text" placeholder="Enter text for new note">
+    <button id="addNoteButton" class="btn btn-primary">Add Note</button>
+    <br>
     <p id="out">...</p>
+    <br>
     <p id="err" style="color: red;"></p>
+    <br>
     <p id="result">loading...</p>
+
+    <div id="board">
+        <!-- Notes will be dynamically added here -->
+    </div>
 
     <!-- Bootstrap JS libraries -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="../public/app.js"></script>
+    
 
 
 </body>

@@ -1,22 +1,16 @@
-
-//WSS port
-const PORT = process.env.PORT || 3030;
-
-//Express port
-const port = 3000;
-
-
-//DATABASE
+const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
+const path = require('path'); // Required for serving static files
 const { Client } = require('pg');
 const config = require('./config'); 
 
 const dbClient = new Client({
-    connectionString: config.databaseURL,
-    user: config.databaseUsername,
-    password: config.databasePassword,
-  });
+  connectionString: config.databaseURL,
+  user: config.databaseUsername,
+  password: config.databasePassword,
+});
 
-// Connect to the database
 dbClient.connect()
   .then(() => {
     console.log('Connected to ElephantSQL database');
@@ -25,182 +19,100 @@ dbClient.connect()
     console.error('Error connecting to ElephantSQL database:', error);
   });
 
-//Add Express
-const express = require('express');
 const app = express();
-
-app.use(express.json());
-
-app.use(express.static('public'));
-
-app.get('/query', async (req, res) => {
-    try {
-      await dbClient.connect();
-  
-      //const result = await dbClient.query('SELECT * FROM users');
-
-      const result = await dbClient.query('SELECT id FROM "public"."users" WHERE user_id = 1'); // Replace with your actual query conditions
-
-  
-      // Send the result as JSON
-      res.json(result.rows);
-      //res.json({ id: 123 }); // Replace with your actual data
-
-    } catch (error) {
-      console.error('Error executing query:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
-    } finally {
-      await dbClient.end();
-    }
-});
-  
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
-
-  
-  /////////////////////
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 
 
+// Serve static files including JavaScript files from a directory (e.g., "public")
+app.use('/public', express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path, stat) => {
+      if (path.endsWith('.js')) {
+          res.set('Content-Type', 'application/javascript');
+      }
+  },
+}));
 
-const WebSocket = require('ws');
-const http = require('http'); // Import the 'http' module
+// Store notes in memory (for simplicity; consider using a database)
+const notes = [];
 
-require('dotenv').config();
+wss.on('connection', (ws) => {
+    // Send existing notes to the new client
+    ws.send(JSON.stringify({ type: 'INIT', data: notes }));
+    console.log("wss connection on");
 
-const fs = require('fs');
+    ws.on('message', (message) => {
+        const data = JSON.parse(message);
+        if (data.type === 'ADD_NOTE') {
+
+          console.log("Received ADD_NOTE message with data.data.text:", data.data.text); // Access 'data.data.text'
+            console.log("Received ADD_NOTE message with text:", data.text);
+
+            console.log("ADDING NEW NOTE SERVER SIDE");
+            const newNote = { id: Date.now(), text: data.data.text, x: 0, y: 0 };
+            notes.push(newNote);
+
+            console.log("Received ADD_NOTE message with data:", data);
 
 
-
-console.log("Starting WebSocket server on port " + PORT);
-
-const wss = new WebSocket.Server({ noServer: true }); // Create a WebSocket server
-
-// Set: datatyp "med bara nycklar", Wikipedia: Unlike most other collection types, rather than retrieving a specific element from a set, one typically tests a value for membership in a set. 
-const clients = new Set();
-
-wss.on('connection', (ws, req) => {
-
-    const dropdownItems = [];
-
-    //Update dropdown list
-    ws.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
-
-    
-
-    wss.on('connection', (ws) => {
-        // Send the current list of items to the newly connected client
-        ws.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
-      
-        // Handle incoming messages from the client
-        ws.on('message', (message) => {
-          const data = JSON.parse(message);
-      
-          // Check the action type in the incoming message
-          if (data.action === 'add_item') {
-            const newItemName = data.itemName;
-      
-            // Add the new item to the dropdownItems array
-            dropdownItems.push(newItemName);
-      
-            // Broadcast the updated list to all connected clients
+            // Broadcast the new note to all connected clients
             wss.clients.forEach((client) => {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ action: 'update_items', items: dropdownItems }));
-              }
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
+                }
             });
-          }
-        });
-    });
 
 
+        } else if (data.type === 'MOVE_NOTE') {
+          console.log("recieved MOVE_NOTE request from client side");
 
+            
 
+            
 
+            const receivedNoteId = data.data.id;
 
+            console.log("Recieved note with id: " + data.data.id);
 
+            // Log the current state of the notes array
+            console.log("Current notes array:", notes);
 
+            //const note = notes.find((note) => note.id === receivedNoteId);
 
-    // WebSocket connection handling code (unchanged)
-    // ...
-    // Check valid token (set token in .env as WS_TOKEN=my-secret-token )
-    const urlParams = new URLSearchParams(req.url.slice(1));
-    if (urlParams.get('token') !== process.env.WS_TOKEN) {
-        console.log('Invalid token: ' + urlParams.get('token'));
-        ws.send(JSON.stringify({
-            type: 'error',
-            msg: 'ERROR: Invalid token.'
-        }));
-        ws.close();
-    }
+            const note = notes.find((note) => note.id === parseInt(receivedNoteId));
 
+            console.log(note + " = note log");
 
+            if (note) {
 
-    // Spara connectionen i vårt client-Set:
-    if (!clients.has(ws)) {
-        ws.createdAt = new Date()
-        clients.add(ws)
-    }
-    console.log('Client connected:', req.headers['sec-websocket-key'], 
-        'client count:', clients.size, ws);
+                console.log("Found note:", note);
+                note.x = data.data.x;
+                note.y = data.data.y;
+                console.log("data.x: " + data.data.x);
+                console.log("data.y: " + data.data.y);
+                
 
-    ws.on('message', (rawMessage) => {
-
-        ws.lastMessage = new Date()
-    
-        // Vi konverterar vår råa JSON till ett objekt
-        const message = JSON.parse(rawMessage.toString())
-
-        message.clientId = req.headers['sec-websocket-key']
-
-        console.log('Received message:', message)
-
-        clients.forEach(client => {
-
-            // Skicka inte till vår egen klient (ws)
-            if (client === ws) return
-
-            client.send(JSON.stringify({
-                type: 'paste',
-                text: message.text
-            }));
-        })
-    });
-});
-
-const server = http.createServer((req, res) => {
-    if (req.url === '/') {
-        // Read the HTML file
-        fs.readFile('ws-frontend/index.html', (err, data) => {
-            if (err) {
-                // Handle file read error
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Internal Server Error');
-            } else {
-                // Serve the HTML file
-                res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end(data);
+                // Broadcast the note's new position to all connected clients
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'MOVE_NOTE', data: { id: data.data.id, x: data.data.x, y: data.data.y } }));
+                        console.log("Sending data to clientside, to move note to positions: " + data.data.x + " and " + data.data.y);
+                    }
+                });
             }
-        });
-    } else {
-        // Handle other HTTP requests (if needed)
-        // ...
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Not Found');
-    }
-});
-
-// Upgrade HTTP requests to WebSocket requests
-server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
+        }
     });
 });
 
-// Start listening on the specified port for both HTTP and WebSocket
-server.listen(PORT, () => {
-    //console.log(`Server listening on http://localhost:${PORT}`);
+//Om man använder root url (localhost / ) så redirectar det till index.html i public
+app.get('/', (req, res) => {
+  res.redirect('/public/index.html');
+});
+
+
+server.listen(process.env.PORT || 3000, () => {
+    console.log('Server is running on port 3000');
 });
 
 
