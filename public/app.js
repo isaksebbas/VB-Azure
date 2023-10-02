@@ -34,8 +34,8 @@ if (!localStorage.getItem('pastebin_token')) {
 WS_TOKEN = localStorage.getItem('pastebin_token') || 'my-secret-token';
         
 // wss = SSL-krypterad
-//WS_URL = `wss://w-o-m-2023.azurewebsites.net/?token=${WS_TOKEN}` 
-WS_URL = `ws://localhost:3030?token=${WS_TOKEN}`
+WS_URL = `wss://w-o-m-2023.azurewebsites.net/?token=${WS_TOKEN}` 
+//WS_URL = `ws://localhost:3030?token=${WS_TOKEN}`
 
 console.log(WS_URL);
 
