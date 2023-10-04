@@ -1,3 +1,5 @@
+
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -65,11 +67,8 @@ wss.on('connection', (ws) => {
 
 
         } else if (data.type === 'MOVE_NOTE') {
-          console.log("recieved MOVE_NOTE request from client side");
 
-            
-
-            
+            console.log("recieved MOVE_NOTE request from client side");
 
             const receivedNoteId = data.data.id;
 
@@ -100,8 +99,47 @@ wss.on('connection', (ws) => {
                         console.log("Sending data to clientside, to move note to positions: " + data.data.x + " and " + data.data.y);
                     }
                 });
+              }
+        } else if (data.type === "UPDATE_NOTE_TEXT") {
+          
+          const noteId = data.data.id;
+          const newText = data.data.text;
+
+          const note = notes.find((note) => note.id === parseInt(noteId));
+
+          if (note) {
+              note.text = newText;
+              console.log(note + " note text updates to " + newText);
+
+              // Broadcast the updated text to all connected clients
+              wss.clients.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify({ type: 'UPDATE_NOTE_TEXT', data: { id: noteId, text: newText } }));
+                  }
+              });
+          }
+      } else if (data.type === 'UPDATE_NOTE_CONTENT') {
+
+        console.log("CALLING UPDATE CONTENT");
+        const noteId = data.data.id;
+        const newContent = data.data.content;
+  
+        const note = notes.find((note) => note.id === parseInt(noteId));
+  
+        if (note) {
+          note.content = newContent;
+          console.log(`Note ${noteId} content updated to: ${newContent}`);
+  
+          // Broadcast the updated content to all connected clients
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'UPDATE_NOTE_CONTENT', data: { id: noteId, content: newContent } }));
             }
+          });
         }
+      }
+
+
     });
 });
 
@@ -114,5 +152,6 @@ app.get('/', (req, res) => {
 server.listen(process.env.PORT || 3000, () => {
     console.log('Server is running on port 3000');
 });
+
 
 

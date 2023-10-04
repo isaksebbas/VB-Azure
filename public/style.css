@@ -7,7 +7,7 @@ body, h1, p, input, textarea {
 body {
     font-family: Arial, sans-serif;
     background: linear-gradient(135deg, #3498db, #e74c3c);
-    display: flex;
+    /*display:flex;*/
     justify-content: center;
     align-items: center;
     min-height: 100vh;
@@ -60,7 +60,7 @@ code {
 }
 
 input[type="text"] {
-    width: 100%;
+    width: 90%;
     padding: 10px;
     border: none;
     border-radius: 5px;
@@ -92,15 +92,21 @@ input[type="text"] {
 }
 
 #addNoteButton {
-    padding: 20px;
+    padding: 8px;
     color: blue;
-    font-size: 1px;
-
+    font-size: 1rem;
+    color: white;
+    width: 9%;
 }
 
 #board {
     position: relative;
+    
     width: 100%;
-    height: 100vh;
+    height: 80vh;
     background-color: beige;
+    margin-bottom: 0px;
+    vertical-align: bottom;
 }
+
+
