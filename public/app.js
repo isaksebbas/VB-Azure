@@ -2,7 +2,8 @@
 
 console.log("App.js loaded");
 
-const socket = new WebSocket('ws://localhost:3000'); // Replace 'your-server-url' with your actual WebSocket server URL
+//const socket = new WebSocket('ws://localhost:3000'); // Replace 'your-server-url' with your actual WebSocket server URL
+const socket = new WebSocket('wss://20.107.224.52:3000');
 
 // Function to send a message over the WebSocket
 function sendMessage(type, data) {
