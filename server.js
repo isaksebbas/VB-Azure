@@ -115,6 +115,7 @@ wss.on('connection', (ws) => {
               wss.clients.forEach((client) => {
                   if (client.readyState === WebSocket.OPEN) {
                       client.send(JSON.stringify({ type: 'UPDATE_NOTE_TEXT', data: { id: noteId, text: newText } }));
+                      console.log("useless shit called?");
                   }
               });
           }
@@ -134,6 +135,7 @@ wss.on('connection', (ws) => {
           wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({ type: 'UPDATE_NOTE_CONTENT', data: { id: noteId, content: newContent } }));
+              console.log("Should now update for everyone the content?" + newContent + " + " + noteId);
             }
           });
         }

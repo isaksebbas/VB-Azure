@@ -158,6 +158,20 @@ socket.addEventListener('message', (event) => {
     if (inputField) {
       // Update the input field's value
       inputField.value = newText;
+      console.log("From update note text eventlistener app.ks line 161, should now be updated to " + newText);
+    }
+  } else if (type === 'UPDATE_NOTE_CONTENT') {
+    // Handle an update to a note's content
+    const noteId = data.id;
+    const newContent = data.content;
+
+    // Find the input field for the note by its ID
+    const inputField = document.querySelector(`[data-note-id="${noteId}"] input`);
+
+    if (inputField) {
+      // Update the input field's value with the new content
+      inputField.value = newContent;
+      console.log("Updated note content to: " + newContent);
     }
   }
 });
