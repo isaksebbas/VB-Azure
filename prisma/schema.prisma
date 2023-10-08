@@ -2,25 +2,56 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// MONGODB
 datasource db {
-  provider = "postgresql"
-  url      = env("POST_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  email        String         @unique
+  name         String?
+  password     String?
+  boardMembers boardMembers[]
+  notes        notes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model boards {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  description  String?
+  ownerId      String         @db.ObjectId
+  boardMembers boardMembers[] // Relationship: a board can have multiple members
+  notes        notes[] // Relationship: a board can have multiple notes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+// Define the boardMembers model to represent the relationship between users and boards
+model boardMembers {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  userId  String @db.ObjectId
+  boardId String @db.ObjectId
+  user    users  @relation(fields: [userId], references: [id])
+  board   boards @relation(fields: [boardId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 }
 
 model notes {
-  id Int @id @default(autoincrement())
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
   noteText String?
-  userId Int
-  createdAt DateTime? @default(now()) 
+  userId   String  @db.ObjectId
+  boardId  String  @db.ObjectId
+  user     users   @relation(fields: [userId], references: [id])
+  board    boards  @relation(fields: [boardId], references: [id])
+
+  createdAt DateTime? @default(now())
   updatedAt DateTime? @default(now())
-}
-
-
-model users {
-  id     Int    @id @default(autoincrement())
-  email   String   @unique
-  name    String?
-  password String?
-  createdAt DateTime @default(now()) 
-  updatedAt DateTime @default(now())
 }
