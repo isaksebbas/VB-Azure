@@ -1,7 +1,3 @@
-// config.js
-module.exports = {
-    databaseURL: 'postgres://gkrlsmwl:DiTG5iL7WHZD4seU4TcjrFvpeNVz7tmO@snuffleupagus.db.elephantsql.com/gkrlsmwl',
-    databaseUsername: 'gkrlsmwl',
-    databasePassword: 'DiTG5iL7WHZD4seU4TcjrFvpeNVz7tmO',
-  };
-  
+const uri = 'mongodb+srv://kimrannstrom:tGeBhJi7prXfx59u@cluster0.esc1vpv.mongodb.net/notesdb?retryWrites=true&w=majority';
+
+module.exports = uri;
