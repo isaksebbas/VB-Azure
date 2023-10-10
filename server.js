@@ -16,7 +16,8 @@ const cors = require('cors');
 app.use(cors());
 
 const corsOptions = {
-  origin: 'http://localhost:3030',
+  //origin: 'http://localhost:3030',
+  origin: ['https://w-o-m-23.azurewebsites.net/'],
 };
 
 app.use(cors(corsOptions));
