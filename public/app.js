@@ -2,6 +2,7 @@
 
 console.log("App.js loaded");
 
+
 const socket = new WebSocket('ws://localhost:3000'); // Replace 'your-server-url' with your actual WebSocket server URL
 //const socket = new WebSocket('wss://w-o-m-2023.azurewebsites.net');
 
@@ -31,11 +32,15 @@ const addNoteButton = document.getElementById('addNoteButton');
 const noteTextInput = document.getElementById('noteText');
 
 addNoteButton.addEventListener('click', () => {
-  const noteText = noteTextInput.value.trim();
-  if (noteText) {
-    addNote(noteText);
-    // Clear the input field after adding the note
-    noteTextInput.value = '';
+  try {
+    const noteText = noteTextInput.value.trim();
+    if (noteText) {
+      addNote(noteText);
+      // Clear the input field after adding the note
+      noteTextInput.value = '';
+    }
+  } catch (error) {
+    console.error('An error occurred while adding a note:', error);
   }
 });
 
@@ -53,126 +58,139 @@ board.addEventListener('dragover', (event) => {
 });
 
 board.addEventListener('drop', (event) => {
-  event.preventDefault();
-  const noteId = event.dataTransfer.getData('text/plain');
-  const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+  try {
+    event.preventDefault();
+    const noteId = event.dataTransfer.getData('text/plain');
+    const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
 
-  if (noteElement) {
-    const newX = event.clientX - board.getBoundingClientRect().left;
-    const newY = event.clientY - board.getBoundingClientRect().top;
+    if (noteElement) {
+      const newX = event.clientX - board.getBoundingClientRect().left;
+      const newY = event.clientY - board.getBoundingClientRect().top;
 
-    // Call the moveNote function to update note positions
-    moveNote(noteId, newX, newY);
-    console.log("dropping note at new positions (x and y): " + newX + " + " + newY);
+      // Call the moveNote function to update note positions
+      moveNote(noteId, newX, newY);
+      console.log("dropping note at new positions (x and y): " + newX + " + " + newY);
+    }
+  } catch (error) {
+    console.error('An error occurred while handling a drop event:', error);
   }
 });
 
 // Function to render a new note on the board
 function renderNewNote(note) {
   // Create a new note element
-  const noteElement = document.createElement('div');
-  noteElement.className = 'note';
-  noteElement.style.left = '50px'; // Set the initial position
-  noteElement.style.top = '50px';
-  noteElement.setAttribute('data-note-id', note.id); // Set the unique ID as a data attribute
+  try {
+    // Create a new note element
+    const noteElement = document.createElement('div');
+    noteElement.className = 'note';
+    noteElement.style.left = '50px'; // Set the initial position
+    noteElement.style.top = '50px';
+    noteElement.setAttribute('data-note-id', note.id); // Set the unique ID as a data attribute
 
-  // Make the note draggable
-  noteElement.draggable = true;
+    // Make the note draggable
+    noteElement.draggable = true;
 
-  // Attach drag-and-drop event handlers
-  noteElement.addEventListener('dragstart', (event) => {
-    event.dataTransfer.setData('text/plain', note.id.toString());
-  });
+    // Attach drag-and-drop event handlers
+    noteElement.addEventListener('dragstart', (event) => {
+      event.dataTransfer.setData('text/plain', note.id.toString());
+    });
 
-  // Create a separate element for displaying the note's title or label
-  const titleElement = document.createElement('div');
-  titleElement.className = 'note-title';
-  titleElement.textContent = note.text || ''; // Set the initial title based on the note's text
+    // Create a separate element for displaying the note's title or label
+    const titleElement = document.createElement('div');
+    titleElement.className = 'note-title';
+    titleElement.textContent = note.text || ''; // Set the initial title based on the note's text
 
-  // Create an input field for editing the note's content
-  const inputField = document.createElement('input');
-  inputField.type = 'text';
-  inputField.value = note.content || ''; // Set the initial value based on the note's content
-  inputField.addEventListener('input', (event) => {
-    // When the input field value changes, update the content and send an update to the server
-    const newContent = event.target.value;
-    updateNoteContent(note.id, newContent);
-  });
+    // Create an input field for editing the note's content
+    const inputField = document.createElement('input');
+    inputField.type = 'text';
+    inputField.value = note.content || ''; // Set the initial value based on the note's content
+    inputField.addEventListener('input', (event) => {
+      // When the input field value changes, update the content and send an update to the server
+      const newContent = event.target.value;
+      updateNoteContent(note.id, newContent);
+    });
 
-  // Append the title element and input field to the note element
-  noteElement.appendChild(titleElement);
-  noteElement.appendChild(inputField);
+    // Append the title element and input field to the note element
+    noteElement.appendChild(titleElement);
+    noteElement.appendChild(inputField);
 
-  // Append the note element to the board
-  const board = document.getElementById('board');
-  board.appendChild(noteElement);
+    // Append the note element to the board
+    const board = document.getElementById('board');
+    board.appendChild(noteElement);
 
-  // Display the note title if it exists and is not undefined
-  if (note.text !== undefined) {
-    console.log('Received note with title:', note.text); // Log the received note title
-    titleElement.textContent = note.text; // Set the title element's text
-  } else {
-    console.log('Received note with undefined title. Note:', note); // Log the entire note object
+    // Display the note title if it exists and is not undefined
+    if (note.text !== undefined) {
+      console.log('Received note with title:', note.text); // Log the received note title
+      titleElement.textContent = note.text; // Set the title element's text
+    } else {
+      console.log('Received note with undefined title. Note:', note); // Log the entire note object
+    }
+  } catch (error) {
+    console.error('An error occurred while rendering a new note:', error);
   }
 }
 
 // Handle WebSocket messages received from the server
 socket.addEventListener('message', (event) => {
-  const message = JSON.parse(event.data);
-  const { type, data } = message;
+  try {
+    const message = JSON.parse(event.data);
+    const { type, data } = message;
 
-  if (type === 'INIT') {
-    // Handle initial data (list of existing notes)
-    data.forEach((note) => {
-      renderNewNote(note);
-      // Implement code to render existing notes on the board
-    });
-  } else if (type === 'ADD_NOTE') {
-    // Handle a new note added by another user
-    // Implement code to render the new note on the board
-    console.log("Received a new note with text:", data.text);
-    renderNewNote(data);
-    console.log("Should have added note?");
-  } else if (type === 'MOVE_NOTE') {
-    // Handle a note moved by another user
-    const noteId = data.id;
-    const newX = data.x;
-    const newY = data.y;
+    if (type === 'INIT') {
+      // Handle initial data (list of existing notes)
+      data.forEach((note) => {
+        renderNewNote(note);
+        // Implement code to render existing notes on the board
+      });
+    } else if (type === 'ADD_NOTE') {
+      // Handle a new note added by another user
+      // Implement code to render the new note on the board
+      console.log("Received a new note with text:", data.text);
+      renderNewNote(data);
+      console.log("Should have added note?");
+    } else if (type === 'MOVE_NOTE') {
+      // Handle a note moved by another user
+      const noteId = data.id;
+      const newX = data.x;
+      const newY = data.y;
 
-    // Find the note element on the board by its ID
-    const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+      // Find the note element on the board by its ID
+      const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
 
-    if (noteElement) {
-      // Update the position of the note element
-      noteElement.style.left = `${newX}px`;
-      noteElement.style.top = `${newY}px`;
+      if (noteElement) {
+        // Update the position of the note element
+        noteElement.style.left = `${newX}px`;
+        noteElement.style.top = `${newY}px`;
+      }
+    } else if (type === 'UPDATE_NOTE_TEXT') {
+      // Handle an update to a note's text
+      const noteId = data.id;
+      const newText = data.text;
+
+      // Find the input field for the note by its ID
+      const inputField = document.querySelector(`[data-note-id="${noteId}"] input`);
+
+      if (inputField) {
+        // Update the input field's value
+        inputField.value = newText;
+        console.log("From update note text eventlistener app.ks line 161, should now be updated to " + newText);
+      }
+    } else if (type === 'UPDATE_NOTE_CONTENT') {
+      // Handle an update to a note's content
+      const noteId = data.id;
+      const newContent = data.content;
+
+      // Find the input field for the note by its ID
+      const inputField = document.querySelector(`[data-note-id="${noteId}"] input`);
+
+      if (inputField) {
+        // Update the input field's value with the new content
+        inputField.value = newContent;
+        console.log("Updated note content to: " + newContent);
+      }
     }
-  } else if (type === 'UPDATE_NOTE_TEXT') {
-    // Handle an update to a note's text
-    const noteId = data.id;
-    const newText = data.text;
-
-    // Find the input field for the note by its ID
-    const inputField = document.querySelector(`[data-note-id="${noteId}"] input`);
-
-    if (inputField) {
-      // Update the input field's value
-      inputField.value = newText;
-      console.log("From update note text eventlistener app.ks line 161, should now be updated to " + newText);
-    }
-  } else if (type === 'UPDATE_NOTE_CONTENT') {
-    // Handle an update to a note's content
-    const noteId = data.id;
-    const newContent = data.content;
-
-    // Find the input field for the note by its ID
-    const inputField = document.querySelector(`[data-note-id="${noteId}"] input`);
-
-    if (inputField) {
-      // Update the input field's value with the new content
-      inputField.value = newContent;
-      console.log("Updated note content to: " + newContent);
-    }
+  } catch (e) {
+    console.log("Error updating note");
   }
 });
 

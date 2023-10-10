@@ -59,17 +59,6 @@ code {
     margin-bottom: 20px;
 }
 
-input[type="text"] {
-    width: 90%;
-    padding: 10px;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
-    margin-bottom: 10px;
-    background-color: #f0f0f0;
-    color: #333;
-}
-
 .output-text {
     font-size: 18px;
     color: #333;
@@ -78,13 +67,26 @@ input[type="text"] {
 
 .note {
     position: absolute;
-    border: 1px solid #000;
-    padding: 50px;
-    background-color: yellow;
-    color: black;
-    font-size: 10px;
-    cursor: grab; /* Add a grab cursor to indicate that the notes are draggable */
-    z-index: 1; /* Ensure notes appear on top of other elements */
+    background-color: #f5f5f5; 
+    border: 1px solid #ddd;
+    padding: 20px; 
+    width: 300px; 
+    margin: 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+  }
+
+/* Note input field*/
+input[type="text"] {
+    width: 90%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    background-color: #f0f0f0;
+    color: #333;
 }
 
 .note:active {
