@@ -1,24 +1,50 @@
-
+document.addEventListener('DOMContentLoaded', function() {
 
 console.log("App.js loaded");
 
 const socket = new WebSocket('ws://localhost:3000'); // Replace 'your-server-url' with your actual WebSocket server URL
 //const socket = new WebSocket('wss://w-o-m-2023.azurewebsites.net');
 
+let selectedBoardId; // Global variable to store the selected board ID
+
+let renderedNotes = []; 
+
+const boardNotes = {}; 
+
 // Function to send a message over the WebSocket
 function sendMessage(type, data) {
-  console.log(data + "data in sendMessage");
-  const message = { type, data };
-  socket.send(JSON.stringify(message));
-  console.log("message sent using function sendMessage to server");
+    console.log(data + "data in sendMessage");
+    const message = { type, data, boardId: selectedBoardId }; // Include selected board ID
+    socket.send(JSON.stringify(message));
+    console.log("message sent using function sendMessage to server");
 }
 
-// Function to add a new note
-function addNote(text) {
-  console.log("Text from addNote: " + text);
-  sendMessage('ADD_NOTE', { text: text }); // Set the 'text' property
-  console.log("ADDING NOTE app.js line 140");
+function selectBoard(boardId) {
+  sendMessage('SELECT_BOARD', boardId);
 }
+
+
+
+document.getElementById('boardDropdown').addEventListener('change', (event) => {
+  selectedBoardId = event.target.value;
+  console.log(`Selected board ID: ${selectedBoardId}`);
+  selectBoard(selectedBoardId);
+  // Unrender notes that belong to the previous board
+  unrenderNotes();
+});
+
+
+
+function addNote(text) {
+  if (selectedBoardId) {
+    sendMessage('ADD_NOTE', { text: text, boardId: selectedBoardId });
+    console.log("sent ADD_NOTE");
+  } else {
+    console.error("Selected board ID is not defined.");
+  }
+}
+
+
 
 // Function to update the content of a note
 function updateNoteContent(id, content) {
@@ -32,19 +58,28 @@ const noteTextInput = document.getElementById('noteText');
 
 addNoteButton.addEventListener('click', () => {
   const noteText = noteTextInput.value.trim();
-  if (noteText) {
-    addNote(noteText);
-    // Clear the input field after adding the note
-    noteTextInput.value = '';
+  if (noteText && selectedBoardId) { // Ensure selectedBoardId is defined
+      addNote(noteText);
+      noteTextInput.value = '';
+  } else {
+      console.error("Note text or selected board ID is not defined.");
   }
 });
 
+
 // Function to move a note to a new position
 function moveNote(id, x, y) {
-  console.log("Calling moveNote with id:", id, "x:", x, "y:", y);
+  const noteElement = document.querySelector(`[data-note-id="${id}"]`);
+
+  if (noteElement) {
+    noteElement.style.left = `${x}px`;
+    noteElement.style.top = `${y}px`;
+  }
+
+  // Send the updated position to the server
   sendMessage('MOVE_NOTE', { id, x, y });
-  console.log("LOG: moveNote function called, sending data to server.js");
 }
+
 
 const board = document.getElementById('board');
 
@@ -67,57 +102,105 @@ board.addEventListener('drop', (event) => {
   }
 });
 
-// Function to render a new note on the board
 function renderNewNote(note) {
-  // Create a new note element
-  const noteElement = document.createElement('div');
-  noteElement.className = 'note';
-  noteElement.style.left = '50px'; // Set the initial position
-  noteElement.style.top = '50px';
-  noteElement.setAttribute('data-note-id', note.id); // Set the unique ID as a data attribute
+  console.log("Rendernewnote starts");
 
-  // Make the note draggable
-  noteElement.draggable = true;
+  if (!boardNotes[note.boardId]) {
+    boardNotes[note.boardId] = [];
+  }
 
-  // Attach drag-and-drop event handlers
-  noteElement.addEventListener('dragstart', (event) => {
-    event.dataTransfer.setData('text/plain', note.id.toString());
-  });
+  boardNotes[note.boardId].push(note);
 
-  // Create a separate element for displaying the note's title or label
-  const titleElement = document.createElement('div');
-  titleElement.className = 'note-title';
-  titleElement.textContent = note.text || ''; // Set the initial title based on the note's text
+  
+  if (note.boardId === selectedBoardId) {
+    const noteElement = document.createElement('div');
+    noteElement.className = 'note';
+    noteElement.style.left = '50px';
+    noteElement.style.top = '50px';
+    noteElement.setAttribute('data-note-id', note.id);
 
-  // Create an input field for editing the note's content
-  const inputField = document.createElement('input');
-  inputField.type = 'text';
-  inputField.value = note.content || ''; // Set the initial value based on the note's content
-  inputField.addEventListener('input', (event) => {
-    // When the input field value changes, update the content and send an update to the server
-    const newContent = event.target.value;
-    updateNoteContent(note.id, newContent);
-  });
+    noteElement.draggable = true;
 
-  // Append the title element and input field to the note element
-  noteElement.appendChild(titleElement);
-  noteElement.appendChild(inputField);
+    noteElement.addEventListener('dragstart', (event) => {
+      event.dataTransfer.setData('text/plain', note.id.toString());
+    });
 
-  // Append the note element to the board
-  const board = document.getElementById('board');
-  board.appendChild(noteElement);
+    const titleElement = document.createElement('div');
+    titleElement.className = 'note-title';
+    titleElement.textContent = note.text || '';
 
-  // Display the note title if it exists and is not undefined
-  if (note.text !== undefined) {
-    console.log('Received note with title:', note.text); // Log the received note title
-    titleElement.textContent = note.text; // Set the title element's text
-  } else {
-    console.log('Received note with undefined title. Note:', note); // Log the entire note object
+    const inputField = document.createElement('input');
+    inputField.type = 'text';
+    inputField.value = note.content || '';
+    inputField.addEventListener('input', (event) => {
+      const newContent = event.target.value;
+      updateNoteContent(note.id, newContent);
+    });
+
+    noteElement.appendChild(titleElement);
+    noteElement.appendChild(inputField);
+
+    const board = document.getElementById('board');
+    board.appendChild(noteElement);
+
+    if (note.text !== undefined) {
+      console.log('Received note with title:', note.text);
+      titleElement.textContent = note.text;
+    } else {
+      console.log('Received note with undefined title. Note:', note);
+    }
+
+    // Add note to the renderedNotes array
+    renderedNotes.push(note);
   }
 }
 
+
+function unrenderNotes() {
+  if (selectedBoardId) {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+
+    if (boardNotes[selectedBoardId]) {
+      boardNotes[selectedBoardId].forEach(note => {
+        renderNewNote(note);
+      });
+    }
+
+    // Clear the renderedNotes array
+    renderedNotes = [];
+  }
+}
+
+
+  // Update the renderedNotes array to only include notes from the current board
+  renderedNotes = renderedNotes.filter(note => note.boardId === selectedBoardId);
+
+  // Add the code below to re-render the notes from the selected board
+  /*
+  boardNotes[selectedBoardId].forEach(note => {
+    renderNewNote(note);
+  });
+*/
+
+
+function selectBoard(boardId) {
+  sendMessage('SELECT_BOARD', boardId);
+
+  // Initialize boardNotes for the selected board if it doesn't exist
+  if (!boardNotes[boardId]) {
+    boardNotes[boardId] = [];
+  }
+
+  // Unrender notes that belong to the previous board
+  unrenderNotes();
+}
+
+
+
 // Handle WebSocket messages received from the server
 socket.addEventListener('message', (event) => {
+  console.log("Beginning of socket eventlistener");
   const message = JSON.parse(event.data);
   const { type, data } = message;
 
@@ -128,11 +211,11 @@ socket.addEventListener('message', (event) => {
       // Implement code to render existing notes on the board
     });
   } else if (type === 'ADD_NOTE') {
-    // Handle a new note added by another user
-    // Implement code to render the new note on the board
+    console.log("Log data ADD_NOTE app.js:", data);
     console.log("Received a new note with text:", data.text);
     renderNewNote(data);
     console.log("Should have added note?");
+
   } else if (type === 'MOVE_NOTE') {
     // Handle a note moved by another user
     const noteId = data.id;
@@ -188,5 +271,10 @@ socket.addEventListener('error', (error) => {
   console.error('WebSocket error:', error);
 });
 
+
 console.log("End of app.js");
+});
+
+
+
 

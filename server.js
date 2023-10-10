@@ -66,42 +66,13 @@ app.get('/main', authenticateToken, (req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 app.post('/receiveToken', authenticateToken, (req, res) => {
-  //console.log(`Received request to verify token: ${req.body.token}`);
-  //console.log('Decoded object:', req.user);
+
 
   const receivedToken = req.body.token; // Access token from request body
-  //console.log(`Received token: ${receivedToken}`);
+  
 
-  // Log that a request has been received
-  //console.log("Received request to verify token (app.post /recievetoken):", receivedToken);
-
-  // Perform any additional logic here based on the authenticated user (req.user)
-  // For example, you can use req.user.email or req.user.id to identify the user
-
-  //res.json({ message: 'Token received and verified successfully (from NTW)' });
-
-  console.log("Token recieved and verified, redirecting user to website");
+  //console.log("Token recieved in /recieveToken POST: ", receivedToken);
 
   res.redirect('http://localhost:3000/public');
 
@@ -109,10 +80,10 @@ app.post('/receiveToken', authenticateToken, (req, res) => {
 
 app.post('/verifyToken', authenticateToken, async (req, res) => {
   try {
-    console.log("beginning of verifyToken");
-    console.log("verify token body (inkommande): ", req.body);
-    console.log("verify token inkommande e-post: ", req.user.email);
-    console.log("verify token inkommande id: ", req.user.sub);
+    //console.log("beginning of verifyToken");
+    //console.log("verify token body (inkommande): ", req.body);
+    //console.log("verify token inkommande e-post: ", req.user.email);
+    //console.log("verify token inkommande id: ", req.user.sub);
 
     const jwtuserid = req.user.sub;
 
@@ -142,6 +113,8 @@ app.post('/verifyToken', authenticateToken, async (req, res) => {
     console.error('Error in verifyToken:', error);
     res.sendStatus(500);
   }
+
+  
 });
 
 
@@ -150,36 +123,107 @@ app.post('/verifyToken', authenticateToken, async (req, res) => {
 //res.send({ msg: 'Success', user: { email: user.email, accessibleItems } });
 
 
+//verify the token from authorization header
+function verifyToken(req, res, next) {
+
+  //console.log(req.headers);
+
+  const token = req.headers.authorization.split(' ')[1]; // Get the token without "Bearer "
+
+  //console.log("Function verifyToken: " + req.headers.authorization);
+
+  if (!token) {
+    console.error('Token not provided');
+    return res.status(403).send({ msg: 'Token not provided' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      console.error('Error verifying token:', err);
+      return res.status(403).send({ msg: 'Failed to authenticate token' });
+    }
+
+    req.user = user;
+    next();
+  });
+}
+
+app.get('/private', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+
+    const user = await client.db("notesdb").collection("users").findOne({ _id: new ObjectId(userId) });
+
+    if (!user) {
+      console.error('User not found');
+      return res.status(404).send({ msg: 'User not found' });
+    }
+
+    const accessibleBoardIds = user.accessibleBoards.map(id => new ObjectId(id));
+
+    const accessibleBoards = await client.db("notesdb").collection("boards").find({
+      _id: { $in: accessibleBoardIds }
+    }).toArray();
+
+    //console.log(accessibleBoards, ": accessible boards from the server.js function");
+
+    res.send({ msg: 'You have access to this route', user: req.user, accessibleBoards });
+  } catch (error) {
+    console.error('Error fetching accessible boards:', error);
+    res.status(500).send({ msg: 'Internal Server Error' });
+  }
+});
 
 
 
 
 
-
-
-
-
+let selectedBoardId; // Global variable to store the selected board ID
 
 
 
 const notes = [];
 
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: 'INIT', data: notes }));
+  
+
+  ws.send(JSON.stringify({ type: 'INIT', data: [] }));
   console.log("WebSocket connection established");
 
   ws.on('message', (message) => {
+    console.log("message recieved, beginning to process");
+
     const data = JSON.parse(message);
 
-    if (data.type === 'ADD_NOTE') {
-      const newNote = { id: Date.now(), text: data.data.text, x: 0, y: 0 };
+    const { type, data: messageData, boardId } = data; // Extract boardId
+
+    console.log("messageData.boardId(det som kommer från clientside:", messageData.boardId);
+    console.log("global variabel för boardId: ", selectedBoardId);
+
+    selectedBoardId = messageData.boardId;
+
+    console.log("Selected board efter redefine före typ:", selectedBoardId);
+
+    if (type === 'SELECT_BOARD') {
+      console.log("Select board");
+      
+      const boardNotes = notes.filter(note => note.boardId === selectedBoardId);
+
+      ws.send(JSON.stringify({ type: 'INIT', data: boardNotes }));
+
+    } else if (type === 'ADD_NOTE') {
+      console.log("Received ADD_NOTE");
+      const newNote = { id: Date.now(), text: messageData.text, x: 0, y: 0, boardId: selectedBoardId }; // Use selectedBoardId here
       notes.push(newNote);
 
       wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
-          }
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
+          console.log("Sent a new note");
+        }
       });
+
+
   } else if (data.type === 'MOVE_NOTE') {
       const receivedNoteId = data.data.id;
       const note = notes.find((note) => note.id === parseInt(receivedNoteId));
@@ -213,13 +257,14 @@ wss.on('connection', (ws) => {
         });
     }
   } else if (data.type === 'UPDATE_NOTE_CONTENT') {
+
     console.log("CALLING UPDATE CONTENT");
-  const noteId = data.data.id;
-  const newContent = data.data.content;
+    const noteId = data.data.id;
+    const newContent = data.data.content;
 
-  const note = notes.find((note) => note.id === parseInt(noteId));
+    const note = notes.find((note) => note.id === parseInt(noteId));
 
-  if (note) {
+    if (note) {
     note.content = newContent;
     console.log(`Note ${noteId} content updated to: ${newContent}`);
 
