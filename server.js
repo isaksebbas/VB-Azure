@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const path = require('path'); 
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb'); 
 const { ObjectId } = require('mongodb');
@@ -24,7 +24,7 @@ app.use(cors(corsOptions));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const uri = require('./config'); 
+const uri = require('./config');
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 client.connect()
@@ -36,21 +36,24 @@ client.connect()
   });
 
 const authenticateToken = (req, res, next) => {
-  
+  try {
   const { token } = req.body;
 
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      console.error('Error verifying token in const authenticateToken:', err);
-      return res.sendStatus(403);
-    }
-    console.log("Decoded user email successfully: " + user.email);
-    req.user = user;  // Add the user object to the request for later use
-    next();  // Continue with the next middleware or route handler
-  });
-  
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        console.error('Error verifying token in const authenticateToken:', err);
+        return res.sendStatus(403);
+      }
+      console.log("Decoded user email successfully: " + user.email);
+      req.user = user;  // Add the user object to the request for later use
+      next();  // Continue with the next middleware or route handler
+    });
+  } catch (error) {
+    console.error('Error in authenticateToken:', error);
+    res.sendStatus(500); // Internal server error
+  }
 };
 
 app.use('/public', express.static(path.join(__dirname, 'public'), {
@@ -64,6 +67,10 @@ app.use('/public', express.static(path.join(__dirname, 'public'), {
 app.get('/main', authenticateToken, (req, res) => {
   res.sendFile(path.join(__dirname, 'path-to-main-page.html'));
 });
+
+
+
+
 
 
 app.post('/receiveToken', authenticateToken, (req, res) => {
@@ -185,99 +192,80 @@ let selectedBoardId; // Global variable to store the selected board ID
 const notes = [];
 
 wss.on('connection', (ws) => {
-  
-
-  ws.send(JSON.stringify({ type: 'INIT', data: [] }));
+  ws.send(JSON.stringify({ type: 'INIT', data: notes }));
   console.log("WebSocket connection established");
 
   ws.on('message', (message) => {
-    console.log("message recieved, beginning to process");
-
     const data = JSON.parse(message);
 
-    const { type, data: messageData, boardId } = data; // Extract boardId
-
-    console.log("messageData.boardId(det som kommer från clientside:", messageData.boardId);
-    console.log("global variabel för boardId: ", selectedBoardId);
-
-    selectedBoardId = messageData.boardId;
-
-    console.log("Selected board efter redefine före typ:", selectedBoardId);
-
-    if (type === 'SELECT_BOARD') {
-      console.log("Select board");
-      
-      const boardNotes = notes.filter(note => note.boardId === selectedBoardId);
-
-      ws.send(JSON.stringify({ type: 'INIT', data: boardNotes }));
-
-    } else if (type === 'ADD_NOTE') {
-      console.log("Received ADD_NOTE");
-      const newNote = { id: Date.now(), text: messageData.text, x: 0, y: 0, boardId: selectedBoardId }; // Use selectedBoardId here
+    if (data.type === 'ADD_NOTE') {
+      const newNote = { id: Date.now(), text: data.data.text, x: 0, y: 0 };
       notes.push(newNote);
 
       wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
-          console.log("Sent a new note");
-        }
+          if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
+          }
       });
-
-
   } else if (data.type === 'MOVE_NOTE') {
       const receivedNoteId = data.data.id;
       const note = notes.find((note) => note.id === parseInt(receivedNoteId));
 
-      if (note) {
-          note.x = data.data.x;
-          note.y = data.data.y;
+          if (note) {
+            note.x = data.data.x;
+            note.y = data.data.y;
 
-          wss.clients.forEach((client) => {
+            wss.clients.forEach((client) => {
               if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify({ type: 'MOVE_NOTE', data: { id: data.data.id, x: data.data.x, y: data.data.y } }));
+                client.send(JSON.stringify({ type: 'MOVE_NOTE', data: { id: data.data.id, x: data.data.x, y: data.data.y } }));
               }
-          });
-      }
-  } else if (data.type === "UPDATE_NOTE_TEXT") {
-    const noteId = data.data.id;
-    const newText = data.data.text;
+            });
+          }
+        } else if (data.type === "UPDATE_NOTE_TEXT") {
+          const noteId = data.data.id;
+          const newText = data.data.text;
 
-    const note = notes.find((note) => note.id === parseInt(noteId));
+          const note = notes.find((note) => note.id === parseInt(noteId));
 
-    if (note) {
-        note.text = newText;
-        console.log(note + " note text updates to " + newText);
+          if (note) {
+            note.text = newText;
+            console.log(note + " note text updates to " + newText);
 
-        // Broadcast the updated text to all connected clients
-        wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
+            // Broadcast the updated text to all connected clients
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({ type: 'UPDATE_NOTE_TEXT', data: { id: noteId, text: newText } }));
                 console.log("useless shit called?");
             }
         });
     }
   } else if (data.type === 'UPDATE_NOTE_CONTENT') {
-
     console.log("CALLING UPDATE CONTENT");
-    const noteId = data.data.id;
-    const newContent = data.data.content;
+  const noteId = data.data.id;
+  const newContent = data.data.content;
 
-    const note = notes.find((note) => note.id === parseInt(noteId));
+  const note = notes.find((note) => note.id === parseInt(noteId));
 
-    if (note) {
+  if (note) {
     note.content = newContent;
     console.log(`Note ${noteId} content updated to: ${newContent}`);
 
-    // Broadcast the updated content to all connected clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'UPDATE_NOTE_CONTENT', data: { id: noteId, content: newContent } }));
-        console.log("Should now update for everyone the content?" + newContent + " + " + noteId);
+            // Broadcast the updated content to all connected clients
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ type: 'UPDATE_NOTE_CONTENT', data: { id: noteId, content: newContent } }));
+                console.log("Should now update for everyone the content?" + newContent + " + " + noteId);
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
       }
     });
+  } catch (error) {
+    console.error('WebSocket connection error:', error);
   }
-  }
-  });
 });
 
 app.get('/', authenticateToken, (req, res) => {
