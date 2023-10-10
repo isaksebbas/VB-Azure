@@ -4,6 +4,8 @@ const WebSocket = require('ws');
 const path = require('path'); 
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb'); 
+const { ObjectId } = require('mongodb');
+
 require('dotenv').config();
 
 const app = express();
@@ -35,16 +37,7 @@ client.connect()
 
 const authenticateToken = (req, res, next) => {
   
-  //console.log("Using secret key: " + process.env.JWT_SECRET);
-
   const { token } = req.body;
-
-
-  //const token = req.headers['authorization']; 
-
-  //console.log("Recieved token ((const authenticateToken) server.js)", token);
-
-  //res.json({ message: 'Token received and verified successfully' });
 
   if (!token) return res.sendStatus(401);
 
@@ -67,6 +60,11 @@ app.use('/public', express.static(path.join(__dirname, 'public'), {
     }
   },
 }));
+
+app.get('/main', authenticateToken, (req, res) => {
+  res.sendFile(path.join(__dirname, 'path-to-main-page.html'));
+});
+
 
 
 
@@ -98,10 +96,6 @@ app.post('/receiveToken', authenticateToken, (req, res) => {
   // Log that a request has been received
   //console.log("Received request to verify token (app.post /recievetoken):", receivedToken);
 
-  //console.log("Secret key to decode: " + process.env.JWT_SECRET);
-
-
-
   // Perform any additional logic here based on the authenticated user (req.user)
   // For example, you can use req.user.email or req.user.id to identify the user
 
@@ -113,7 +107,47 @@ app.post('/receiveToken', authenticateToken, (req, res) => {
 
 });
 
+app.post('/verifyToken', authenticateToken, async (req, res) => {
+  try {
+    console.log("beginning of verifyToken");
+    console.log("verify token body (inkommande): ", req.body);
+    console.log("verify token inkommande e-post: ", req.user.email);
+    console.log("verify token inkommande id: ", req.user.sub);
 
+    const jwtuserid = req.user.sub;
+
+    const usersCollection = client.db("notesdb").collection("users");
+
+    console.log("usersCollection defined");
+
+    const user = await usersCollection.findOne({ _id: new ObjectId(jwtuserid) });
+
+    console.log("beginning of usersCollection loop");
+
+    if (!user) {
+      console.error('User not found');
+      return res.status(404).send({ msg: 'User not found' });
+    }
+
+    // Retrieve accessible boards
+    const accessibleBoards = await client.db("notesdb").collection("boards").find({
+      _id: { $in: user.accessibleBoards }
+    }).toArray();
+
+    console.log(user.email);
+    res.send({ msg: 'Success', user: { email: user.email, accessibleBoards } });
+    console.log("verifyToken successful, sending response");
+
+  } catch (error) {
+    console.error('Error in verifyToken:', error);
+    res.sendStatus(500);
+  }
+});
+
+
+
+//const accessibleItems = user.accessibleItems;
+//res.send({ msg: 'Success', user: { email: user.email, accessibleItems } });
 
 
 
