@@ -69,10 +69,6 @@ app.get('/main', authenticateToken, (req, res) => {
 });
 
 
-
-
-
-
 app.post('/receiveToken', authenticateToken, (req, res) => {
 
 
@@ -191,25 +187,69 @@ let selectedBoardId; // Global variable to store the selected board ID
 
 const notes = [];
 
+
+
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: 'INIT', data: notes }));
+
+  try {
+
+  ws.send(JSON.stringify({ type: 'INIT', data: [] }));
   console.log("WebSocket connection established");
 
+  
+
   ws.on('message', (message) => {
+
+    try {
+    console.log("message recieved, beginning to process");
+
     const data = JSON.parse(message);
 
-    if (data.type === 'ADD_NOTE') {
-      const newNote = { id: Date.now(), text: data.data.text, x: 0, y: 0 };
+    const { type, data: messageData, boardId } = data; // Extract boardId
+
+    console.log("messageData.boardId(det som kommer från clientside:", messageData.boardId);
+    console.log("global variabel för boardId: ", selectedBoardId);
+
+    selectedBoardId = messageData.boardId;
+
+    console.log("Selected board efter redefine före typ:", selectedBoardId);
+
+    if (type === 'SELECT_BOARD') {
+      console.log("Select board");
+      
+      const boardNotes = notes.filter(note => note.boardId === selectedBoardId);
+
+      ws.send(JSON.stringify({ type: 'INIT', data: boardNotes }));
+
+    } else if (type === 'ADD_NOTE') {
+      console.log("Received ADD_NOTE");
+      const newNote = { id: Date.now(), text: messageData.text, x: 0, y: 0, boardId: selectedBoardId }; // Use selectedBoardId here
       notes.push(newNote);
 
       wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
-          }
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
+          console.log("Sent a new note");
+        }
       });
+
+
   } else if (data.type === 'MOVE_NOTE') {
       const receivedNoteId = data.data.id;
       const note = notes.find((note) => note.id === parseInt(receivedNoteId));
+
+        if (data.type === 'ADD_NOTE') {
+          const newNote = { id: Date.now(), text: data.data.text, x: 0, y: 0 };
+          notes.push(newNote);
+
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
+            }
+          });
+        } else if (data.type === 'MOVE_NOTE') {
+          const receivedNoteId = data.data.id;
+          const note = notes.find((note) => note.id === parseInt(receivedNoteId));
 
           if (note) {
             note.x = data.data.x;
@@ -221,6 +261,7 @@ wss.on('connection', (ws) => {
               }
             });
           }
+        }
         } else if (data.type === "UPDATE_NOTE_TEXT") {
           const noteId = data.data.id;
           const newText = data.data.text;
@@ -240,13 +281,14 @@ wss.on('connection', (ws) => {
         });
     }
   } else if (data.type === 'UPDATE_NOTE_CONTENT') {
+
     console.log("CALLING UPDATE CONTENT");
-  const noteId = data.data.id;
-  const newContent = data.data.content;
+    const noteId = data.data.id;
+    const newContent = data.data.content;
 
-  const note = notes.find((note) => note.id === parseInt(noteId));
+    const note = notes.find((note) => note.id === parseInt(noteId));
 
-  if (note) {
+    if (note) {
     note.content = newContent;
     console.log(`Note ${noteId} content updated to: ${newContent}`);
 
@@ -267,6 +309,7 @@ wss.on('connection', (ws) => {
     console.error('WebSocket connection error:', error);
   }
 });
+  
 
 app.get('/', authenticateToken, (req, res) => {
   res.redirect('/public/index.html');

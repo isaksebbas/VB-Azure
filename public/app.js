@@ -20,8 +20,17 @@ function sendMessage(type, data) {
     console.log("message sent using function sendMessage to server");
 }
 
+
+
 function selectBoard(boardId) {
   sendMessage('SELECT_BOARD', boardId);
+   // Initialize boardNotes for the selected board if it doesn't exist
+   if (!boardNotes[boardId]) {
+    boardNotes[boardId] = [];
+  }
+
+  // Unrender notes that belong to the previous board
+    unrenderNotes();
 }
 
 
@@ -43,7 +52,14 @@ function addNote(text) {
   } else {
     console.error("Selected board ID is not defined.");
   }
+  
+  // Add the note to the boardNotes array
+  if (selectedBoardId && boardNotes[selectedBoardId]) {
+    const newNote = { id: Date.now(), text: text, x: 0, y: 0, boardId: selectedBoardId };
+    boardNotes[selectedBoardId].push(newNote);
+  }
 }
+
 
 
 
@@ -138,6 +154,8 @@ function renderNewNote(note) {
     updateNoteContent(note.id, newContent);
   });
 
+  
+
   // Append the title element and input field to the note element
   noteElement.appendChild(titleElement);
   noteElement.appendChild(inputField);
@@ -157,6 +175,7 @@ function renderNewNote(note) {
 
 // Handle WebSocket messages received from the server
 socket.addEventListener('message', (event) => {
+  try {
   const message = JSON.parse(event.data);
   const { type, data } = message;
 
@@ -230,10 +249,34 @@ socket.addEventListener('error', (error) => {
   console.error('WebSocket error:', error);
 });
 
+ // Update the renderedNotes array to only include notes from the current board
+ renderedNotes = renderedNotes.filter(note => note.boardId === selectedBoardId);
 
-console.log("End of app.js");
+ // Add the code below to re-render the notes from the selected board
+ boardNotes[selectedBoardId].forEach(note => {
+  renderNewNote(note);
 });
 
+function unrenderNotes() {
+  if (selectedBoardId) {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+
+    if (boardNotes[selectedBoardId]) {
+      console.log('Notes for selected board:', boardNotes[selectedBoardId]);
+      boardNotes[selectedBoardId].forEach(note => {
+        renderNewNote(note);
+        renderedNotes.push(note); // Add notes to renderedNotes array
+      }); 
+    }
+  }
+}
 
 
 
+console.log("End of app.js");
+
+
+
+
+});
