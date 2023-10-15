@@ -1,10 +1,10 @@
-// Initialize WebSocket connection
+console.log("App.js log from line 3, loading app.js now...");
+
 const socket = new WebSocket('ws://localhost:3000');
 
-// Store rendered notes and board-specific notes
 let renderedNotes = [];
 const boardNotes = {};
-const notes = [];  // 
+
 
 
 document.getElementById('addBoardButton').addEventListener('click', async () => {
@@ -38,13 +38,13 @@ document.getElementById('addBoardButton').addEventListener('click', async () => 
   }
 });
 
-// Function to send messages to the server
 function sendMessage(type, data, boardId) {
+    console.log(data + "data in sendMessage");
     const message = { type, data, boardId };
     socket.send(JSON.stringify(message));
+    console.log("message sent using function sendMessage to server");
 }
 
-// Function to select a board
 function selectBoard(boardId, selectedBoardId) {
     sendMessage('SELECT_BOARD', boardId, selectedBoardId);
     if (!boardNotes[boardId]) {
@@ -54,73 +54,85 @@ function selectBoard(boardId, selectedBoardId) {
     return boardId;
 }
 
-// Event listener for board selection dropdown
 document.getElementById('boardDropdown').addEventListener('change', (event) => {
-    selectedBoardId = event.target.value;
-    console.log(`Selected board ID: ${selectedBoardId}`);
-    selectBoard(selectedBoardId);
+  selectedBoardId = event.target.value; // Update the existing selectedBoardId variable
+  console.log(`Selected board ID: ${selectedBoardId}`);
+  selectBoard(selectedBoardId);
 });
 
-// Function to add a new note
-function addNote(text, selectedBoardId, x, y) {
-  if (selectedBoardId) {
-      sendMessage('ADD_NOTE', { text, x, y, boardId: selectedBoardId }, selectedBoardId);
-  }
 
-  if (selectedBoardId && boardNotes[selectedBoardId]) {
-      const newNote = { id: Date.now(), text, x, y, boardId: selectedBoardId }; // Set initial x, y positions
-      boardNotes[selectedBoardId].push(newNote);
-  }
+function addNote(text, selectedBoardId) {
+    if (selectedBoardId) {
+        sendMessage('ADD_NOTE', { text: text, boardId: selectedBoardId }, selectedBoardId);
+        console.log("sent ADD_NOTE");
+    } else {
+        console.error("Selected board ID is not defined.");
+    }
+
+    if (selectedBoardId && boardNotes[selectedBoardId]) {
+        const newNote = { id: Date.now(), text: text, x: 0, y: 0, boardId: selectedBoardId };
+        boardNotes[selectedBoardId].push(newNote);
+    }
 }
 
-// Event listener for adding a note
-document.getElementById('addNoteButton').addEventListener('click', () => {
-    const noteText = document.getElementById('noteText').value.trim();
+function updateNoteContent(id, content) {
+    console.log("Updating note content for ID:", id, "to:", content);
+    sendMessage('UPDATE_NOTE_CONTENT', { id, content }, selectedBoardId);
+}
+
+const addNoteButton = document.getElementById('addNoteButton');
+const noteTextInput = document.getElementById('noteText');
+
+addNoteButton.addEventListener('click', () => {
+    const noteText = noteTextInput.value.trim();
     if (noteText && selectedBoardId) {
         addNote(noteText, selectedBoardId);
-        document.getElementById('noteText').value = '';
+        noteTextInput.value = '';
+    } else {
+        console.error("Note text or selected board ID is not defined.");
     }
 });
 
-// Function to move a note
 function moveNote(id, x, y) {
     const noteElement = document.querySelector(`[data-note-id="${id}"]`);
+
     if (noteElement) {
         noteElement.style.left = `${x}px`;
         noteElement.style.top = `${y}px`;
     }
+
     sendMessage('MOVE_NOTE', { id, x, y }, selectedBoardId);
 }
 
-// Event listener for drag over
-document.getElementById('board').addEventListener('dragover', (event) => {
+const board = document.getElementById('board');
+
+board.addEventListener('dragover', (event) => {
     event.preventDefault();
 });
 
-// Event listener for drop
-document.getElementById('board').addEventListener('drop', (event) => {
-    const board = document.getElementById('board');
+board.addEventListener('drop', (event) => {
     try {
         event.preventDefault();
         const noteId = event.dataTransfer.getData('text/plain');
         const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+
         if (noteElement) {
             const newX = event.clientX - board.getBoundingClientRect().left;
             const newY = event.clientY - board.getBoundingClientRect().top;
+
             moveNote(noteId, newX, newY);
+            console.log("dropping note at new positions (x and y): " + newX + " + " + newY);
         }
     } catch (error) {
         console.error('An error occurred while handling a drop event:', error);
     }
 });
 
-// Function to render a new note
 function renderNewNote(note) {
     const noteElement = document.createElement('div');
-
     noteElement.className = 'note';
-    noteElement.style.left = `${note.x}px`; // Set the left position
-    noteElement.style.top = `${note.y}px`; // Set the top position
+    noteElement.style.left = '50px';
+    noteElement.style.top = '50px';
     noteElement.setAttribute('data-note-id', note.id);
 
     noteElement.draggable = true;
@@ -135,7 +147,7 @@ function renderNewNote(note) {
 
     const inputField = document.createElement('input');
     inputField.type = 'text';
-    inputField.value = note.content || ''; 
+    inputField.value = note.content || '';
     inputField.addEventListener('input', (event) => {
         const newContent = event.target.value;
         updateNoteContent(note.id, newContent);
@@ -155,37 +167,19 @@ function renderNewNote(note) {
     }
 }
 
-// WebSocket event listener for incoming messages
 socket.addEventListener('message', (event) => {
     try {
         const message = JSON.parse(event.data);
         const { type, data } = message;
 
         if (type === 'INIT') {
-          data.forEach((note) => {
-            addToBoardNotes(note);
-        });
-
-        // If selectedBoardId is set, render notes for the selected board
-        if (selectedBoardId) {
-            unrenderNotes(selectedBoardId);
-        }
+            data.forEach((note) => {
+                renderNewNote(note);
+            });
         } else if (type === 'ADD_NOTE') {
-          console.log("Received ADD_NOTE");
-          const newNote = { id: data.id, text: data.text, x: data.x, y: data.y, boardId: selectedBoardId };
-          notes.push(newNote);
-
-          renderNewNote(newNote); // Render the new note
-
-          wss.clients.forEach((client) => {
-              if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify({ type: 'ADD_NOTE', data: newNote }));
-                  console.log("Sent a new note");
-              }
-          });
-
-            
-            
+            console.log("Received a new note with text:", data.text);
+            renderNewNote(data);
+            console.log("Should have added note?");
         } else if (type === 'MOVE_NOTE') {
             const noteId = data.id;
             const newX = data.x;
@@ -208,99 +202,65 @@ socket.addEventListener('message', (event) => {
                 console.log("From update note text eventlistener app.ks line 161, should now be updated to " + newText);
             }
         } else if (type === 'UPDATE_NOTE_CONTENT') {
-          const noteId = data.id;
-          const newContent = data.content;
+            const noteId = data.id;
+            const newContent = data.content;
 
-          const note = notes.find((note) => note.id === parseInt(noteId));
+            const inputField = document.querySelector(`[data-note-id="${noteId}"] input`);
 
-          if (note) {
-              note.content = newContent;
-
-              // Broadcast the updated content to all connected clients
-              wss.clients.forEach((client) => {
-                  if (client.readyState === WebSocket.OPEN) {
-                      client.send(JSON.stringify({ type: 'UPDATE_NOTE_CONTENT', data: { id: noteId, content: newContent } }));
-                      console.log("Should now update for everyone the content?" + newContent + " + " + noteId);
-                  }
-              });
-          }
-      }
+            if (inputField) {
+                inputField.value = newContent;
+                console.log("Updated note content to: " + newContent);
+            }
         }
-     catch (e) {
-        console.log("Error updating note", e);
+    } catch (e) {
+        console.log("Error updating note");
     }
 });
 
-// WebSocket event listener for connection open
-socket.addEventListener('open', async (event) => {
-  console.log('WebSocket connection opened.');
+socket.addEventListener('open', (event) => {
+    console.log('WebSocket connection opened.');
 
-  // If selectedBoardId is set, request notes for the selected board
-  if (selectedBoardId) {
-      sendMessage('REQUEST_NOTES', {}, selectedBoardId);
-  }
+    if (selectedBoardId) {
+        renderedNotes = renderedNotes.filter(note => note.boardId === selectedBoardId);
+        boardNotes[selectedBoardId].forEach(note => {
+            renderNewNote(note);
+        });
+    }
+
+    unrenderNotes(selectedBoardId);
 });
 
-// WebSocket event listener for connection close
 socket.addEventListener('close', (event) => {
     console.log('WebSocket connection closed.');
 });
 
-// WebSocket event listener for error
 socket.addEventListener('error', (error) => {
     console.error('WebSocket error:', error);
 });
 
 
-// Function to unrender notes, backup
-/*
+
 function unrenderNotes(selectedBoardId) {
-  const board = document.getElementById('board');
-  board.innerHTML = '';
+  if (selectedBoardId) {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
 
-  if (selectedBoardId && boardNotes[selectedBoardId]) {
-      console.log('Notes for selected board:', boardNotes[selectedBoardId]);
-      boardNotes[selectedBoardId].forEach(note => {
-          renderNewNote(note);
-          renderedNotes.push(note);
-      });
-  }
-}
-*/
-function unrenderNotes(selectedBoardId) {
-  const board = document.getElementById('board');
-  board.innerHTML = '';
-
-  if (selectedBoardId && boardNotes[selectedBoardId]) {
-      console.log('Notes for selected board:', boardNotes[selectedBoardId]);
-      renderedNotes = boardNotes[selectedBoardId].slice(); // Copy notes for the selected board to renderedNotes
-      boardNotes[selectedBoardId].forEach(note => {
-          renderNewNote(note);
-      });
-  }
-}
-
-
-
-
-function addToBoardNotes(note) {
-  if (!boardNotes[note.boardId]) {
-      boardNotes[note.boardId] = [];
-  }
-  boardNotes[note.boardId].push(note);
-}
-
-function updateNoteContent(id, newContent) {
-  const note = renderedNotes.find(note => note.id === id);
-  if (note) {
-      note.content = newContent;
-      socket.send(JSON.stringify({ type: 'UPDATE_NOTE_CONTENT', data: { id, content: newContent } }));
+      if (boardNotes[selectedBoardId]) {
+          console.log('Notes for selected board:', boardNotes[selectedBoardId]);
+          boardNotes[selectedBoardId].forEach(note => {
+              renderNewNote(note);
+              renderedNotes.push(note);
+          });
       }
   }
+}
 
 
 
+console.log("End of app.js on note taking website");
 
-// Initial render of notes
 renderedNotes = renderedNotes.filter(note => note.boardId === selectedBoardId);
+boardNotes[selectedBoardId].forEach(note => {
+    renderNewNote(note);
+});
 

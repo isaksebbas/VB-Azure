@@ -94,12 +94,14 @@ app.post('/changePassword', authenticateToken, async (req, res) => {
   }
 });
 
-
 app.post('/addBoard', authenticateToken, async (req, res) => {
   console.log("beginning of addBoard");
   try {
     const { boardName } = req.body;
     const userId = req.user.sub;
+
+    console.log("boardName:", boardName); // Add this line
+
     const boardsCollection = client.db("notesdb").collection("boards");
 
     const newBoard = {
@@ -110,50 +112,29 @@ app.post('/addBoard', authenticateToken, async (req, res) => {
       updatedAt: new Date()
     };
 
-    //console.log("The new board: ", newBoard);
+    console.log("newBoard:", newBoard); // Add this line
 
-    try {
-      const result = await boardsCollection.insertOne(newBoard);
-      console.log("Result: ", result);
+    const result = await boardsCollection.insertOne(newBoard);
 
-      if (result.acknowledged) {
-        console.log("Beginning of result loop");
-        const boardId = result.insertedId; // Using result.insertedId directly
-    
-        // Update user document to add boardId to accessibleBoards
-        const usersCollection = client.db("notesdb").collection("users");
-        const updateResult = await usersCollection.updateOne(
-          { _id: new ObjectId(userId) },
-          { $push: { accessibleBoards: boardId } } // Using boardId directly
-        );
-    
-        console.log("Update Result: ", updateResult);
-    
-        if (updateResult.modifiedCount === 1) {
-          res.json({ msg: 'Board added successfully' });
-        } else {
-          console.error('Error updating user document:', updateResult);
-          res.status(500).send({ msg: 'Failed to add board' });
-        }
-      } else {
-        console.log("result is not acknowledged");
-        res.status(500).send({ msg: 'Failed to add board' });
-      }
+    console.log("Result:", result); // Add this line
 
-    } catch (error) {
-      console.error('Error inserting board from try catch:', error);
+    if (result.insertedCount === 1) {
+      const boardId = result.insertedId;
+      const usersCollection = client.db("notesdb").collection("users");
+      await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $push: { accessibleBoards: boardId } }
+      );
+
+      res.json({ msg: 'Board added successfully' });
+    } else {
       res.status(500).send({ msg: 'Failed to add board' });
     }
-
-  } catch(error){
-    console.log("Ännu en fail från try catch i addboard, error nedanför")
-    console.log(error);
+  } catch (error) {
+    console.error('Error adding board:', error);
+    res.status(500).send({ msg: 'Internal Server Error' });
   }
 });
-
-
-
-
 
 
 
