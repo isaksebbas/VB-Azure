@@ -10,7 +10,7 @@ document.getElementById('changePasswordButton').addEventListener('click', async 
 
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:3000/changePassword', {
+    const response = await fetch('http://w-o-m-2023.azurewebsites.net/changePassword', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
