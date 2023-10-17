@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    
+
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    
-    
+
+
     <title>Part 2</title>
 
 </head>
 
 <!-- Works with ws-node in this repo -->
-    
+
 <body>
 
-    
+
 
     <!-- Nav bar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -25,20 +26,22 @@
             <!-- Navbar Brand (You can replace this with your own logo or brand name) -->
             <a class="navbar-brand" href="#">Virtual Board</a>
             <a href="/public/pw/cp.html">Change password.</a>
-            
-            
-            
-            
         </div>
     </nav>
 
     <input type="text" id="boardName" required>
-            <button id="addBoardButton">Add a board</button>
-    
+    <button id="addBoardButton">Add a board</button>
+
     <li class="nav-item">
         <select id="boardDropdown" class="form-control">
             <option value="" disabled selected>Select a board</option>
+            <option value="test">test</option>
         </select>
+
+        <select id="accessDropdown" class="form-control">
+            <option value="" disabled selected>Give board access to..</option>
+        </select>
+
     </li>
 
 
@@ -48,14 +51,14 @@
 
     <button id="addNoteButton" class="btn btn-primary">Add Note</button>
 
-    
+
     <p id="out"></p>
-    
+
     <p id="err" style="color: red;"></p>
-    
+
     <p id="result"></p>
 
-    
+
 
     <div id="board">
         <!-- Notes will  be dynamically added here -->
@@ -68,53 +71,125 @@
     <script src="../public/app.js"></script>
     <script>
 
-function populateBoardsDropdown(boards) {
-    
-    const boardDropdown = document.getElementById('boardDropdown');
+        function populateBoardsDropdown(boards) {
 
-    boards.forEach(board => {
-        const option = document.createElement('option');
-        option.value = board._id;
-        option.textContent = board.name;
-        boardDropdown.appendChild(option);
-    });
-}
+            const boardDropdown = document.getElementById('boardDropdown');
 
-document.addEventListener('DOMContentLoaded', function() {
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
+            boards.forEach(board => {
+                const option = document.createElement('option');
+                option.value = board._id;
+                option.textContent = board.name;
 
-    if (token) {
-        localStorage.setItem('token', token);
-        console.log("Token saved to localStorage");
-    }
+                boardDropdown.appendChild(option);
+            });
+        }
 
-    if (token) {
-        fetch('http://localhost:3000/private', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-        .then(response => response.json())
-        .then(privateData => {
-            console.log('Private Data:', privateData);
-            console.log("Accessible boards: ", privateData.accessibleBoards);
-            if (privateData && privateData.accessibleBoards) {
-                populateBoardsDropdown(privateData.accessibleBoards);
-            } else {
-                console.error('Invalid private data structure:', privateData);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching private data:', error);
+        boardDropdown.addEventListener("change", async function () {
+            const selectedOption = boardDropdown.options[boardDropdown.selectedIndex];
+            const boardId = selectedOption.value; // Get the selected board's ID
+
+            // Use Prisma to query for member IDs associated with the selected board
+            const boardMembers = await prisma.boardMembers.findMany({
+                where: {
+                    boardId: boardId,
+                },
+                include: {
+                    user: true, // Include the related user data
+                },
+            });
+
+            const accessDropdown = document.getElementById("accessDropdown");
+
+            // Clear the current options in the accessDropdown
+            accessDropdown.innerHTML = "";
+
+            // Populate the accessDropdown with user names and emails
+            boardMembers.forEach(boardMember => {
+                const user = boardMember.user;
+                if (user) {
+                    const option = document.createElement('option');
+                    option.value = user.id; // Use the user ID as the value
+                    option.textContent = `${user.name} (${user.email})`;
+                    accessDropdown.appendChild(option);
+                }
+            });
         });
-    }
-});
+
+        /*function fetchUserEmails(userIDs) {
+            const userEmails = [];
+
+            userIDs.forEach(userID => {
+                fetch(`http://localhost:3000/private/${userID}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(userData => {
+                        userEmails.push(userData.email);
+
+                        if (userEmails.length === userIDs.length) {
+                            // All emails have been fetched, so you can now display or process them
+                            console.log(userEmails);
+
+                            const accessDropdown = document.getElementById("accessDropdown");
+
+                            // Show/hide the accessDropdown
+                            if (boardDropdown.value !== "") {
+                                accessDropdown.style.display = "block";
+                            } else {
+                                accessDropdown.style.display = "none";
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching user data:', error);
+                    });
+            });
+        }*/
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (token) {
+                localStorage.setItem('token', token);
+                console.log("Token saved to localStorage");
+            }
+
+            if (token) {
+                fetch('http://localhost:3000/private', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                    .then(response => response.json())
+                    .then(privateData => {
+                        console.log('Private Data:', privateData);
+                        console.log("Accessible boards: ", privateData.accessibleBoards);
+                        if (privateData && privateData.accessibleBoards) {
+                            populateBoardsDropdown(privateData.accessibleBoards);
+                        } else {
+                            console.error('Invalid private data structure:', privateData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching private data:', error);
+                    });
+            }
+        });
+
     </script>
-    
-    
+
+
 
 
 </body>
