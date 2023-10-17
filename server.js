@@ -6,6 +6,9 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb'); 
 const { ObjectId } = require('mongodb');
+const bodyParser = require('body-parser');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 require('dotenv').config();
 
@@ -17,11 +20,13 @@ const cors = require('cors');
 app.use(cors());
 
 const corsOptions = {
-  origin: 'http://localhost:3030',
-  //origin: ['https://w-o-m-23.azurewebsites.net/'],
+  //origin: 'http://localhost:3030',
+  origin: ['https://w-o-m-23.azurewebsites.net/'],
 };
 
 app.use(cors(corsOptions));
+
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -179,7 +184,8 @@ app.post('/receiveToken', authenticateToken, (req, res) => {
   //console.log("Token recieved in /recieveToken POST: ", receivedToken);
 
   //CHANGE TO PRODUCTION
-  res.redirect('http://localhost:3000/public');
+  //res.redirect('http://localhost:3000/public');
+  res.redirect('https://w-o-m-2023.azurewebsites.net/public');
 
 });
 
@@ -288,6 +294,66 @@ let selectedBoardId; // Global variable to store the selected board ID
 
 
 const notes = [];
+
+
+
+
+
+
+
+
+
+
+
+
+//Runs over Prisma
+app.get('/users-dropdown', async (req, res) => {
+  //console.log("Running /users-dropdown");
+  try {
+    const users = await prisma.users.findMany();
+    console.log(users);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+//Runs over MongoDB Driver
+app.post('/grant-access/:userId/:boardId', async (req, res) => {
+
+  
+
+  const { userId, boardId } = req.params;
+
+  console.log("Request header parameters in grant access: ", req.params);
+
+  try {
+    // Update user document to add boardId to accessibleBoards
+    const usersCollection = client.db("notesdb").collection("users");
+    const updateResult = await usersCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $push: { accessibleBoards: boardId } } // Using boardId directly
+    );
+
+    console.log("Update Result: ", updateResult);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

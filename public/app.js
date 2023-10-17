@@ -1,5 +1,6 @@
 // Initialize WebSocket connection
-const socket = new WebSocket('ws://localhost:3000');
+//const socket = new WebSocket('ws://localhost:3000');
+const socket = new WebSocket('wss://w-o-m-2023.azurewebsites.net');
 
 // Store rendered notes and board-specific notes
 let renderedNotes = [];
@@ -16,7 +17,8 @@ document.getElementById('addBoardButton').addEventListener('click', async () => 
   try {
       const token = localStorage.getItem('token');
 
-      const response = await fetch('http://localhost:3000/addBoard', {
+      //const response = await fetch('http://localhost:3000/addBoard', {
+        const response = await fetch('https://w-o-m-2023.azurewebsites.net/addBoard', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
@@ -81,6 +83,8 @@ document.getElementById('addNoteButton').addEventListener('click', () => {
         document.getElementById('noteText').value = '';
     }
 });
+
+
 
 // Function to move a note
 function moveNote(id, x, y) {
@@ -298,9 +302,49 @@ function updateNoteContent(id, newContent) {
       }
   }
 
+  async function getUsersForDropdown() {
+    console.log("Running getUsersForDropdown now");
+    try {
+      const response = await fetch('/users-dropdown');
+      const users = await response.json();
 
+      console.log("users: ", users);
+  
+      const accessDropdown = document.getElementById('accessDropdown');
+      users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.text = user.name || user.email;
+        accessDropdown.appendChild(option);
+      });
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  }
+
+  document.getElementById('grantAccessBtn').addEventListener('click', async () => {
+    const selectedUserId = document.getElementById('accessDropdown').value;
+  
+    if (selectedUserId) {
+      const selectedBoardId = document.getElementById('boardDropdown').value;
+      const boardId = selectedBoardId; 
+  
+      try {
+        const response = await fetch(`/grant-access/${selectedUserId}/${boardId}`, {
+          method: 'POST'
+        });
+  
+        const updatedUser = await response.json();
+        console.log('Access granted:', updatedUser);
+      } catch (error) {
+        console.error('Error granting access:', error);
+      }
+    }
+  });
 
 
 // Initial render of notes
 renderedNotes = renderedNotes.filter(note => note.boardId === selectedBoardId);
+
+document.addEventListener('DOMContentLoaded', getUsersForDropdown);
 

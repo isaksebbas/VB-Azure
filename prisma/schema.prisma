@@ -15,6 +15,7 @@ model users {
   password     String?
   boardMembers boardMembers[]
   notes        notes[]
+ 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -27,6 +28,7 @@ model boards {
   ownerId      String         @db.ObjectId
   boardMembers boardMembers[] // Relationship: a board can have multiple members
   notes        notes[] // Relationship: a board can have multiple notes
+  
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())

@@ -42,6 +42,8 @@
             <option value="" disabled selected>Give board access to..</option>
         </select>
 
+        <button id="grantAccessBtn">Grant Access</button>
+
     </li>
 
 
@@ -84,75 +86,7 @@
             });
         }
 
-        boardDropdown.addEventListener("change", async function () {
-            const selectedOption = boardDropdown.options[boardDropdown.selectedIndex];
-            const boardId = selectedOption.value; // Get the selected board's ID
 
-            // Use Prisma to query for member IDs associated with the selected board
-            const boardMembers = await prisma.boardMembers.findMany({
-                where: {
-                    boardId: boardId,
-                },
-                include: {
-                    user: true, // Include the related user data
-                },
-            });
-
-            const accessDropdown = document.getElementById("accessDropdown");
-
-            // Clear the current options in the accessDropdown
-            accessDropdown.innerHTML = "";
-
-            // Populate the accessDropdown with user names and emails
-            boardMembers.forEach(boardMember => {
-                const user = boardMember.user;
-                if (user) {
-                    const option = document.createElement('option');
-                    option.value = user.id; // Use the user ID as the value
-                    option.textContent = `${user.name} (${user.email})`;
-                    accessDropdown.appendChild(option);
-                }
-            });
-        });
-
-        /*function fetchUserEmails(userIDs) {
-            const userEmails = [];
-
-            userIDs.forEach(userID => {
-                fetch(`http://localhost:3000/private/${userID}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json();
-                    })
-                    .then(userData => {
-                        userEmails.push(userData.email);
-
-                        if (userEmails.length === userIDs.length) {
-                            // All emails have been fetched, so you can now display or process them
-                            console.log(userEmails);
-
-                            const accessDropdown = document.getElementById("accessDropdown");
-
-                            // Show/hide the accessDropdown
-                            if (boardDropdown.value !== "") {
-                                accessDropdown.style.display = "block";
-                            } else {
-                                accessDropdown.style.display = "none";
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching user data:', error);
-                    });
-            });
-        }*/
 
         document.addEventListener('DOMContentLoaded', function () {
 
@@ -165,7 +99,7 @@
             }
 
             if (token) {
-                fetch('http://localhost:3000/private', {
+                fetch('https://w-o-m-2023.azurewebsites.net/private', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
